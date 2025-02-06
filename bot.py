@@ -1,17 +1,18 @@
 import os
-from telegram import Update
-from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 import openai
+from telegram import Update
+from telegram.ext import Application, MessageHandler, filters, CommandHandler, CallbackContext
 
-# Retrieve API keys from environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Telegram Bot Token
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # OpenAI API Key
+# Retrieve API keys securely
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Fetch Telegram Bot Token
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Fetch OpenAI API Key
 
+# Check if API keys are missing
 if not BOT_TOKEN or not OPENAI_API_KEY:
     print("❌ ERROR: Missing environment variables (BOT_TOKEN or OPENAI_API_KEY)")
     exit(1)  # Stop execution if keys are missing
 
-openai.api_key = OPENAI_API_KEY  # Set OpenAI API key
+openai.api_key = OPENAI_API_KEY  # Set OpenAI key
 
 # Function to analyze essay
 def analyze_essay(text):
@@ -23,15 +24,17 @@ def analyze_essay(text):
     return response["choices"][0]["text"]
 
 # Function to handle Telegram messages
-def handle_message(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: CallbackContext):
     essay_text = update.message.text
     feedback = analyze_essay(essay_text)
-    update.message.reply_text(f"📌 Essay Feedback:\n\n{feedback}")
+    await update.message.reply_text(f"📌 Essay Feedback:\n\n{feedback}")
 
-# Set up and start the bot
-updater = Updater(BOT_TOKEN, use_context=True)
-dp = updater.dispatcher
-dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+# Set up the bot
+app = Application.builder().token(BOT_TOKEN).build()
 
-updater.start_polling()
-updater.idle()
+# Add message handler
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# Start the bot
+print("✅ Bot is running...")
+app.run_polling()
